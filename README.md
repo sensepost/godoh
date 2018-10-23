@@ -1,13 +1,17 @@
 <h1 align="center">
   <br>
   <a href="https://github.com/sensepost/goDoH">
-    godoh
+    🕳 godoh
   </a>
   <br>
   <br>
 </h1>
 
 <h4 align="center">A DNS-over-HTTPS Command & Control Proof of Concept</h4>
+<p align="center">
+  <a href="https://twitter.com/leonjza"><img src="https://img.shields.io/badge/Twitter-%40leonjza-blue.svg" alt="@leonjza" height="18"></a>
+  <a href="https://goreportcard.com/report/github.com/sensepost/goDoH"><img src="https://goreportcard.com/badge/github.com/sensepost/goDoH" alt="Go Report Card" height="18"></a>
+</p>
 <br>
 
 ## introduction
