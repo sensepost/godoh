@@ -1,7 +1,6 @@
 package dnsclient
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"io/ioutil"
 	"log"
@@ -19,8 +18,6 @@ type CloudflareDNS struct {
 
 // Lookup performs a DNS lookup using Cloudflare
 func (c *CloudflareDNS) Lookup(name string, rType uint16) Response {
-
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	client := http.Client{
 		Timeout: time.Second * 20,

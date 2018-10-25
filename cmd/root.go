@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"crypto/tls"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -20,6 +22,7 @@ var Version string
 var dnsDomain string
 var dnsProviderName string
 var dnsProvider dnsclient.Client
+var validateSSL bool
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -42,11 +45,14 @@ func init() {
 	cobra.OnInitialize(validateDNSProvider)
 	cobra.OnInitialize(validateDNSDomain)
 	cobra.OnInitialize(seedRand)
+	cobra.OnInitialize(configureSSLValidation)
 
 	rootCmd.PersistentFlags().StringVarP(&dnsDomain,
 		"domain", "d", "", "DNS Domain to use. (ie: example.com)")
 	rootCmd.PersistentFlags().StringVarP(&dnsProviderName,
 		"provider", "p", "google", "Preferred DNS provider to use. [possible: google, cloudflare, raw]")
+	rootCmd.PersistentFlags().BoolVarP(&validateSSL,
+		"validate-certificate", "K", false, "Validate DoH provider SSL certificates")
 }
 
 func seedRand() {
@@ -81,4 +87,10 @@ func validateDNSProvider() {
 	}
 
 	log.Infof("Using `%s` as preferred provider\n", dnsProviderName)
+}
+
+func configureSSLValidation() {
+	if !validateSSL {
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
 }
