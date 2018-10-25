@@ -14,6 +14,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Version is the version of godoh
+var Version string
+
 var dnsDomain string
 var dnsProviderName string
 var dnsProvider dnsclient.Client
@@ -22,7 +25,9 @@ var dnsProvider dnsclient.Client
 var rootCmd = &cobra.Command{
 	Use:   "godoh",
 	Short: "A DNS (over-HTTPS) C2",
-	Long:  `A DNS (over-HTTPS) C2 by @leonjza from @sensepost`,
+	Long: `A DNS (over-HTTPS) C2
+    Version: ` + Version + `
+    By @leonjza from @sensepost`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

@@ -1,9 +1,10 @@
 # ref: https://vic.demuzere.be/articles/golang-makefile-crosscompile/
-LD_FLAGS := -s -w
 BIN_DIR := build
 BIN_NAME := godoh
 
 K := $(shell openssl rand -hex 16)
+V := $(shell git rev-parse --short HEAD)
+LD_FLAGS := -s -w -X=github.com/sensepost/godoh/cmd.Version=$(V)
 
 default: keywarn clean darwin linux windows pack integrity
 
