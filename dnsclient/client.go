@@ -15,6 +15,7 @@ func NewCloudFlareDNS() *CloudflareDNS {
 	return &CloudflareDNS{BaseURL: "https://cloudflare-dns.com/dns-query"}
 }
 
+// NewRawDNS starts a new client making use of traditional DNS
 func NewRawDNS() *RawDNS {
 	return &RawDNS{}
 }

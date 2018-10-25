@@ -30,11 +30,7 @@ func GobPress(s interface{}, data io.Writer) error {
 		return err
 	}
 
-	if err := GzipWrite(data, enc); err != nil {
-		return err
-	}
-
-	return nil
+	return GzipWrite(data, enc)
 }
 
 // UngobUnpress will gob decode and decompress a struct
@@ -52,11 +48,7 @@ func UngobUnpress(s interface{}, data []byte) error {
 	}
 
 	decoder := gob.NewDecoder(bytes.NewReader(decryptData))
-	if err := decoder.Decode(s); err != nil {
-		return err
-	}
-
-	return nil
+	return decoder.Decode(s)
 }
 
 // GzipWrite data to a Writer
@@ -73,7 +65,11 @@ func GzipWrite(w io.Writer, data []byte) error {
 func GunzipWrite(w io.Writer, data []byte) error {
 	// Write gzipped data to the client
 	gr, err := gzip.NewReader(bytes.NewBuffer(data))
+	if err != nil {
+		return err
+	}
 	defer gr.Close()
+
 	data, err = ioutil.ReadAll(gr)
 	if err != nil {
 		return err

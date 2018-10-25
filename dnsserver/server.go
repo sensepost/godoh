@@ -137,7 +137,7 @@ func (h *Handler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 				fp.Name = filepath.Base(fp.Name)
 
 				log.WithFields(log.Fields{"ident": ident, "file-name": fp.Name, "file-sha": fp.Shasum}).
-					Info("Recieved file information.")
+					Info("Received file information.")
 
 				// check shasum
 				h := sha1.New()
