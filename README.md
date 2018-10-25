@@ -25,7 +25,7 @@ All you would need are the `godoh` binaries themselves. Binaries are available f
 To build `godoh` from source, follow the following steps:
 
 * Ensure you have [dep](https://github.com/golang/dep) installed (`go get -v -u github.com/golang/dep/cmd/dep`)
-* Clone this repository to your `$GOPATH`'s `src/` directory so that it is in `sensepost/goDoH`
+* Clone this repository to your `$GOPATH`'s `src/` directory so that it is in `sensepost/godoh`
 * Run `dep ensure` to resolve dependencies
 * Run `make key` to generate a unique encryption key to use for communication
 * Use the `go` build tools, or run `make` to build the binaries in the `build/` directory
@@ -35,6 +35,11 @@ To build `godoh` from source, follow the following steps:
 ```txt
 $ godoh -h
 A DNS (over-HTTPS) C2
+    Version: dev
+    By @leonjza from @sensepost
+
+Usage:
+  godoh [command]
 
 Usage:
   godoh [command]
