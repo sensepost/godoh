@@ -47,8 +47,12 @@ func init() {
 	cobra.OnInitialize(seedRand)
 	cobra.OnInitialize(configureSSLValidation)
 
-	rootCmd.PersistentFlags().StringVarP(&dnsDomain,
-		"domain", "d", "", "DNS Domain to use. (ie: example.com)")
+	// if the DNS domain was configured at compile time, remove the flag
+	if dnsDomain == "" {
+		rootCmd.PersistentFlags().StringVarP(&dnsDomain,
+			"domain", "d", "", "DNS Domain to use. (ie: example.com)")
+	}
+
 	rootCmd.PersistentFlags().StringVarP(&dnsProviderName,
 		"provider", "p", "google", "Preferred DNS provider to use. [possible: google, cloudflare, raw]")
 	rootCmd.PersistentFlags().BoolVarP(&validateSSL,
