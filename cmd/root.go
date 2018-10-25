@@ -22,7 +22,7 @@ var dnsProvider dnsclient.Client
 var rootCmd = &cobra.Command{
 	Use:   "godoh",
 	Short: "A DNS (over-HTTPS) C2",
-	Long:  `A DNS (over-HTTPS) C2`,
+	Long:  `A DNS (over-HTTPS) C2 by @leonjza from @sensepost`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

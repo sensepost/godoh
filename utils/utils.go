@@ -90,7 +90,7 @@ func ByteSplit(buf []byte, lim int) [][]byte {
 	}
 
 	if len(buf) > 0 {
-		chunks = append(chunks, buf[:len(buf)])
+		chunks = append(chunks, buf[:])
 	}
 
 	return chunks
