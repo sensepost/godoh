@@ -15,6 +15,12 @@ func NewCloudFlareDNS() *CloudflareDNS {
 	return &CloudflareDNS{BaseURL: "https://cloudflare-dns.com/dns-query"}
 }
 
+// NewQuad9DNS starts a new Quad9 DNS-over-HTTPS resolver Client
+func NewQuad9DNS() *Quad9DNS {
+	// Use the unfiltered URL.
+	return &Quad9DNS{BaseURL: "https://dns10.quad9.net/dns-query"}
+}
+
 // NewRawDNS starts a new client making use of traditional DNS
 func NewRawDNS() *RawDNS {
 	return &RawDNS{}
