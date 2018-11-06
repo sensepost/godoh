@@ -54,7 +54,8 @@ func init() {
 	}
 
 	rootCmd.PersistentFlags().StringVarP(&dnsProviderName,
-		"provider", "p", "google", "Preferred DNS provider to use. [possible: google, cloudflare, quad9, raw]")
+		"provider", "p", "googlefront",
+		"Preferred DNS provider to use. [possible: googlefront, google, cloudflare, quad9, raw]")
 	rootCmd.PersistentFlags().BoolVarP(&validateSSL,
 		"validate-certificate", "K", false, "Validate DoH provider SSL certificates")
 }
@@ -77,6 +78,9 @@ func validateDNSDomain() {
 
 func validateDNSProvider() {
 	switch dnsProviderName {
+	case "googlefront":
+		dnsProvider = dnsclient.NewGoogleFrontDNS()
+		break
 	case "google":
 		dnsProvider = dnsclient.NewGoogleDNS()
 		break

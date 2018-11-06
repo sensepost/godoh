@@ -10,6 +10,12 @@ func NewGoogleDNS() *GoogleDNS {
 	return &GoogleDNS{BaseURL: "https://dns.google.com/resolve"}
 }
 
+// NewGoogleFrontDNS starts a new Google DNS-over-HTTPS resolver Client
+// The Host header for this request is updated in the client itself
+func NewGoogleFrontDNS() *GoogleFrontDNS {
+	return &GoogleFrontDNS{BaseURL: "https://www.google.com/resolve"}
+}
+
 // NewCloudFlareDNS starts a new Cloudflare DNS-over-HTTPS resolver Client
 func NewCloudFlareDNS() *CloudflareDNS {
 	return &CloudflareDNS{BaseURL: "https://cloudflare-dns.com/dns-query"}
