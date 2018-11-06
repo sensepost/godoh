@@ -211,7 +211,7 @@ func (h *Handler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	case dns.TypeTXT:
 		ident, err := h.parseTxtRRLabels(r)
 		if err != nil {
-			fmt.Printf("Failed to parse identifer: %s", err)
+			fmt.Printf("Failed to parse identifer: %s\n", err)
 			txtRecordResponse = protocol.ErrorTxtResponse
 			break
 		}
