@@ -30,7 +30,15 @@ var rootCmd = &cobra.Command{
 	Short: "A DNS (over-HTTPS) C2",
 	Long: `A DNS (over-HTTPS) C2
     Version: ` + Version + `
-    By @leonjza from @sensepost`,
+	By @leonjza from @sensepost`,
+	Run: func(cmd *cobra.Command, args []string) {
+
+		// by default, start in agent mode
+		if len(args) == 0 {
+			agentCmd.Run(cmd, args)
+			os.Exit(0)
+		}
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
