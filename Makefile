@@ -8,6 +8,7 @@ V := $(shell git rev-parse --short HEAD)
 LD_FLAGS := -s -w -X=github.com/sensepost/godoh/cmd.Version=$(V)
 
 # set dnsDomain if set
+# Example: make dnsDomain=foo.bar
 ifneq ($(dnsDomain),)
 	LD_FLAGS := $(LD_FLAGS) -X=github.com/sensepost/godoh/cmd.dnsDomain=$(dnsDomain)
 endif
