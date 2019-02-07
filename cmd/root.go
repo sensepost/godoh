@@ -8,8 +8,10 @@ import (
 	"os"
 	"strings"
 	"time"
-
+	"net"
+	"context"
 	"github.com/sensepost/godoh/dnsclient"
+	"github.com/sensepost/godoh/utils"
 
 	log "github.com/sirupsen/logrus"
 
@@ -23,6 +25,9 @@ var dnsDomain string
 var dnsProviderName string
 var dnsProvider dnsclient.Client
 var validateSSL bool
+var proxyAddr string
+var proxyUsername string
+var proxyPassword string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -54,6 +59,7 @@ func init() {
 	cobra.OnInitialize(validateDNSDomain)
 	cobra.OnInitialize(seedRand)
 	cobra.OnInitialize(configureSSLValidation)
+	cobra.OnInitialize(configureProxy)
 
 	// if the DNS domain was configured at compile time, remove the flag
 	if dnsDomain == "" {
@@ -66,7 +72,11 @@ func init() {
 		"Preferred DNS provider to use. [possible: googlefront, google, cloudflare, quad9, raw]")
 	rootCmd.PersistentFlags().BoolVarP(&validateSSL,
 		"validate-certificate", "K", false, "Validate DoH provider SSL certificates")
+        rootCmd.PersistentFlags().StringVarP(&proxyAddr, "proxy", "", "", "Use NTLM proxy, i.e hostname:port")
+        rootCmd.PersistentFlags().StringVarP(&proxyUsername, "proxy-username", "", "", "NTLM proxy username to use (blank: attempt to use running user's credentials) ")
+        rootCmd.PersistentFlags().StringVarP(&proxyPassword, "proxy-password", "", "", "NTLM proxy password to use (blank: attempt to use running user's credentials) ")
 }
+
 
 func seedRand() {
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -106,6 +116,42 @@ func validateDNSProvider() {
 	}
 
 	log.Infof("Using `%s` as preferred provider\n", dnsProviderName)
+}
+
+func configureProxy() {
+
+	if proxyAddr!="" {
+
+		if ( (proxyUsername =="" && proxyPassword !="")||(proxyUsername !="" && proxyPassword =="") ) {
+			log.Fatalf("Proxy username or password were not provided")
+		}
+
+		dialContext := (&net.Dialer{
+					KeepAlive: 30 * time.Second,
+					Timeout:   30 * time.Second,
+				}).DialContext
+
+		ntlmDialContext := func(ctx context.Context, network, address string) (net.Conn, error) {
+					conn, err := dialContext(ctx, network, proxyAddr)
+					if err != nil {
+						return conn, err
+					}
+					log.Infof("Attempting to inject NTLM authentication")
+	                                err = utils.ProxySetup(conn, address, proxyUsername,proxyPassword)
+					if err != nil {
+						log.Fatalf("Failed to inject NTLM authentication: %v.", err)
+						return conn, err
+					}
+					return conn, err
+	        }
+		http.DefaultTransport.(*http.Transport).Proxy=nil
+		http.DefaultTransport.(*http.Transport).DialContext=ntlmDialContext
+
+	} else {
+		if (proxyUsername !="" || proxyPassword !="") {
+			log.Fatalf("Proxy address not set, however proxy credentials were provided")
+		}
+	}
 }
 
 func configureSSLValidation() {
