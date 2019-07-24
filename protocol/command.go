@@ -9,17 +9,17 @@ import (
 
 // Command represents a command to be send over DNS.
 type Command struct {
-	Exec       string
-	Data       []byte
-	ExecTime   time.Time
-	identifier string
+	Exec       string    `json:"exec"`
+	Data       []byte    `json:"data"`
+	ExecTime   time.Time `json:"exectime"`
+	Identifier string    `json:"identifier"`
 }
 
 // Prepare configures the File struct with relevant data.
 func (c *Command) Prepare(cmd string) {
 
 	c.Exec = cmd
-	c.identifier = utils.RandomString(5)
+	c.Identifier = utils.RandomString(5)
 }
 
 // GetOutgoing returns the hostnames to lookup as part of a file

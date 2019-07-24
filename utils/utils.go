@@ -6,8 +6,8 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"encoding/gob"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"io"
 	"io/ioutil"
@@ -17,15 +17,13 @@ import (
 // GobPress will gob encode and compress a struct
 func GobPress(s interface{}, data io.Writer) error {
 
-	b := bytes.Buffer{}
-	encoder := gob.NewEncoder(&b)
-
-	if err := encoder.Encode(s); err != nil {
+	j, err := json.Marshal(s)
+	if err != nil {
 		return err
 	}
 
-	// Encrypt the Gobbed data
-	enc, err := Encrypt(b.Bytes())
+	// Encrypt the data
+	enc, err := Encrypt(j)
 	if err != nil {
 		return err
 	}
@@ -47,8 +45,11 @@ func UngobUnpress(s interface{}, data []byte) error {
 		return err
 	}
 
-	decoder := gob.NewDecoder(bytes.NewReader(decryptData))
-	return decoder.Decode(s)
+	if err := json.Unmarshal(decryptData, &s); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // GzipWrite data to a Writer
