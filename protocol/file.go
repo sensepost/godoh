@@ -11,11 +11,11 @@ import (
 
 // File represents a file to be send over DNS.
 type File struct {
-	Size       int64
-	Shasum     string
-	Name       string
-	Data       *[]byte
-	identifier string
+	Size       int64   `json:"size"`
+	Shasum     string  `json:"shasum"`
+	Name       string  `json:"name"`
+	Data       *[]byte `json:"data"`
+	Identifier string  `json:"identifier"`
 }
 
 // Prepare configures the File struct with relevant data.
@@ -29,7 +29,7 @@ func (fc *File) Prepare(data *[]byte, fileInfo os.FileInfo) {
 	fc.Shasum = hex.EncodeToString(h.Sum(nil))
 	fc.Name = fileInfo.Name()
 	fc.Data = data
-	fc.identifier = utils.RandomString(5)
+	fc.Identifier = utils.RandomString(5)
 }
 
 // GetRequests returns the hostnames to lookup as part of a file

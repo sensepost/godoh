@@ -62,7 +62,7 @@ func init() {
 	}
 
 	rootCmd.PersistentFlags().StringVarP(&dnsProviderName,
-		"provider", "p", "googlefront",
+		"provider", "p", "google",
 		"Preferred DNS provider to use. [possible: googlefront, google, cloudflare, quad9, raw]")
 	rootCmd.PersistentFlags().BoolVarP(&validateSSL,
 		"validate-certificate", "K", false, "Validate DoH provider SSL certificates")
@@ -87,6 +87,8 @@ func validateDNSDomain() {
 func validateDNSProvider() {
 	switch dnsProviderName {
 	case "googlefront":
+		log.Warn(`WARNING: Domain fronting dns.google.com via www.google.com no longer works. ` +
+			`A redirect to dns.google.com will be returned. See: https://twitter.com/leonjza/status/1187002742553923584`)
 		dnsProvider = dnsclient.NewGoogleFrontDNS()
 		break
 	case "google":
