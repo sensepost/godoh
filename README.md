@@ -24,24 +24,21 @@ All you would need are the `godoh` binaries themselves. Binaries are available f
 
 To build `godoh` from source, follow the following steps:
 
-* Ensure you have [dep](https://github.com/golang/dep) installed (`go get -v -u github.com/golang/dep/cmd/dep`)
-* Clone this repository to your `$GOPATH`'s `src/` directory so that it is in `sensepost/godoh`
-* Run `dep ensure` to resolve dependencies
+* Ensure you have Go 1.13+
+* Clone this repository with `git clone https://github.com/sensepost/goDoH.git`
 * Run `make key` to generate a unique encryption key to use for communication
-* Use the `go` build tools, or run `make` to build the binaries in the `build/` directory
+* Build the project with one of the following options:
+  * `go build` which will drop you a new `godoh` binary for the current architecture
+  * `make` which will drop binaries in the `build/` directory for various platforms
 
 ## usage
 
 ```txt
-$ godoh -h
 A DNS (over-HTTPS) C2
-    Version: dev
-    By @leonjza from @sensepost
+  By @leonjza from @sensepost
 
 Usage:
-  godoh [command]
-
-Usage:
+  godoh [flags]
   godoh [command]
 
 Available Commands:
@@ -53,9 +50,10 @@ Available Commands:
   test        Test DNS communications
 
 Flags:
-  -d, --domain string     DNS Domain to use. (ie: example.com)
-  -h, --help              help for godoh
-  -p, --provider string   Preferred DNS provider to use. [possible: google, cloudflare, raw] (default "google")
+  -d, --domain string          DNS Domain to use. (ie: example.com)
+  -h, --help                   help for godoh
+  -p, --provider string        Preferred DNS provider to use. [possible: googlefront, google, cloudflare, quad9, raw] (default "google")
+  -K, --validate-certificate   Validate DoH provider SSL certificates
 
 Use "godoh [command] --help" for more information about a command.
 ```
