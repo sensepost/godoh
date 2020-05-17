@@ -13,7 +13,7 @@ ifneq ($(dnsDomain),)
 	LD_FLAGS := $(LD_FLAGS) -X=github.com/sensepost/godoh/cmd.dnsDomain=$(dnsDomain)
 endif
 
-default: keywarn clean darwin linux windows pack integrity
+default: keywarn clean darwin linux windows integrity
 
 clean:
 	$(RM) $(BIN_DIR)/$(BIN_NAME)*
