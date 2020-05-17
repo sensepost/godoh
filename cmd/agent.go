@@ -96,7 +96,7 @@ Example:
 
 				// Exec an os command
 				agentLogger.Info("Command interpreted as OS command")
-				executeCommand(cmdBin, cmdArgs, agentLogger)
+				go executeCommand(cmdBin, cmdArgs, agentLogger)
 				continue
 			}
 		}
