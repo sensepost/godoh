@@ -11,8 +11,6 @@ import (
 	"github.com/sensepost/godoh/dnsserver"
 	"github.com/sensepost/godoh/protocol"
 	"github.com/spf13/cobra"
-
-	log "github.com/sirupsen/logrus"
 )
 
 var replPrompt = "c2"
@@ -33,21 +31,21 @@ sub command cares little for that as any incoming, raw DNS packets are parsed.
 Examples:
 	godoh --domain example.com c2`,
 	Run: func(cmd *cobra.Command, args []string) {
-
-		c2logger := log.WithFields(log.Fields{"module": "c2", "domain": dnsDomain})
+		log := options.Logger
 
 		srv := &dns.Server{Addr: ":" + strconv.Itoa(53), Net: "udp"}
 		h := &dnsserver.Handler{
 			StreamSpool:  make(map[string]protocol.DNSBuffer),
 			CommandSpool: make(map[string]protocol.Command), // only a single command per agent now
 			Agents:       make(map[string]protocol.Agent),
+			Log:          options.Logger,
 		}
 		srv.Handler = h
 
 		go func() {
-			c2logger.Info("DNS C2 starting...")
+			log.Debug().Msg("dns c2 starting up")
 			if err := srv.ListenAndServe(); err != nil {
-				log.Fatalf("Failed to set udp listener %s\n", err.Error())
+				log.Fatal().Err(err).Msg("failed to start dns server")
 			}
 		}()
 
@@ -137,7 +135,7 @@ Examples:
 			c.Prepare(command)
 			h.CommandSpool[agentContext] = c
 
-			c2logger.WithFields(log.Fields{"agent": agentContext, "cmd": command}).Info("Queued command")
+			log.Info().Str("agent", agentContext).Str("command", command).Msg("command queued")
 		}
 	},
 }

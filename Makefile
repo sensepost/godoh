@@ -10,7 +10,7 @@ LD_FLAGS := -s -w -X=github.com/sensepost/godoh/cmd.Version=$(V)
 # set dnsDomain if set
 # Example: make dnsDomain=foo.bar
 ifneq ($(dnsDomain),)
-	LD_FLAGS := $(LD_FLAGS) -X=github.com/sensepost/godoh/cmd.dnsDomain=$(dnsDomain)
+	LD_FLAGS := $(LD_FLAGS) -X=github.com/sensepost/godoh/cmd.CompileTimeDomain=$(dnsDomain)
 endif
 
 default: keywarn clean darwin linux windows integrity
@@ -24,7 +24,7 @@ keywarn:
 	@echo "!!! Not doing this will leave your C2 using the default key!\n"
 
 key:
-	sed -i -E "s/const.*/const cryptKey = \`$(K)\`/g" utils/key.go
+	sed -i -E "s/const.*/const cryptKey = \`$(K)\`/g" lib/key.go
 
 install:
 	go install

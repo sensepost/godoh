@@ -4,11 +4,10 @@ import (
 	"strconv"
 
 	"github.com/miekg/dns"
-	"github.com/sensepost/godoh/dnsserver"
-	"github.com/sensepost/godoh/protocol"
 	"github.com/spf13/cobra"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sensepost/godoh/dnsserver"
+	"github.com/sensepost/godoh/protocol"
 )
 
 // receiveCmd represents the receive command
@@ -23,13 +22,15 @@ Example:
 	godoh --domain example.com receive`,
 	Run: func(cmd *cobra.Command, args []string) {
 
+		log := options.Logger
+
 		srv := &dns.Server{Addr: ":" + strconv.Itoa(53), Net: "udp"}
 		srv.Handler = &dnsserver.Handler{
 			StreamSpool: make(map[string]protocol.DNSBuffer),
 		}
-		log.Info("Serving DNS")
+		log.Info().Msg("starting dns server")
 		if err := srv.ListenAndServe(); err != nil {
-			log.Fatalf("Failed to set udp listener %s\n", err.Error())
+			log.Fatal().Err(err).Msg("failed to start dns server")
 		}
 	},
 }

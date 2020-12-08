@@ -15,10 +15,10 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"github.com/sensepost/godoh/lib"
 	"github.com/sensepost/godoh/protocol"
-	"github.com/sensepost/godoh/utils"
-
-	log "github.com/sirupsen/logrus"
 )
 
 // Handler handles incoming lookups.
@@ -26,15 +26,19 @@ type Handler struct {
 	StreamSpool  map[string]protocol.DNSBuffer
 	CommandSpool map[string]protocol.Command
 	Agents       map[string]protocol.Agent // Updated with TXT record checkins
+
+	Log *zerolog.Logger
 }
 
 // ServeDNS serves the DNS server used to read incoming lookups and process them.
 func (h *Handler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
+
 	msg := dns.Msg{}
 	msg.SetReply(r)
 
 	// Setup the response we will send. By default we assume everything
 	// will be successful and flip to failure as needed.
+	// for txt records we assume there is no command by default
 	msg.Authoritative = true
 	domain := msg.Question[0].Name
 	aRecordResponse := protocol.SuccessDNSResponse
@@ -69,15 +73,14 @@ func (h *Handler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 
 			// Add this new stream identifier
 			h.StreamSpool[ident] = *DNSBuf
-			log.WithFields(log.Fields{"ident": ident}).Info("New incoming DNS stream started")
+			log.Info().Str("agent", ident).Msg("new incoming dns stream")
 
 			break
 		}
 
 		// Error cases for a new stream request
 		if (streamType == protocol.StreamStart) && ok {
-			log.WithFields(log.Fields{"ident": ident}).
-				Error("Tried to start a new stream for an already recorded identifier. Bailing")
+			log.Error().Str("agent", ident).Msg("not starting a new stream for an existing identifier")
 			aRecordResponse = protocol.FailureDNSResponse
 			break
 		}
@@ -91,22 +94,20 @@ func (h *Handler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 			// update the buffer for this client
 			h.StreamSpool[ident] = bufferRecord
 
-			log.WithFields(log.Fields{"ident": ident, "seq": seq, "data": byteData}).
-				Debug("Wrote new data chunk")
+			log.Debug().Str("agent", ident).Int("seq", seq).Bytes("data", byteData).
+				Msg("wrote recieved data chunk")
 			break
 		}
 
 		// Handle errors for data appends
 		if (streamType == protocol.StreamData) && !ok {
-			log.WithFields(log.Fields{"ident": ident}).
-				Error("Tried to append to a steam that is not registered. Bailing")
+			log.Error().Str("agent", ident).Msg("not appending to stream that has not started")
 			aRecordResponse = protocol.FailureDNSResponse
 			break
 		}
 
 		if (streamType == protocol.StreamData) && ok && bufferRecord.Finished {
-			log.WithFields(log.Fields{"ident": ident}).
-				Error("Tried to append to a steam that is already finished. Bailing")
+			log.Error().Str("agent", ident).Msg("not appending to stream that has finished")
 			aRecordResponse = protocol.FailureDNSResponse
 			break
 		}
@@ -122,13 +123,11 @@ func (h *Handler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 
 			switch bufferRecord.Protocol {
 			case protocol.FileProtocol:
-				log.WithFields(log.Fields{"ident": ident}).
-					Info("Attempting to decode the finished FileProtocol stream.")
+				log.Debug().Str("agent", ident).Msg("decoding fileprotocol stream")
 
 				fp := &protocol.File{}
-				if err := utils.UngobUnpress(fp, bufferRecord.Data); err != nil {
-					log.WithFields(log.Fields{"ident": ident, "err": err}).
-						Error("UngobUnpress failed.")
+				if err := lib.UngobUnpress(fp, bufferRecord.Data); err != nil {
+					log.Error().Err(err).Str("agent", ident).Msg("failed to ungobpress")
 					aRecordResponse = protocol.FailureDNSResponse
 					break
 				}
@@ -136,36 +135,22 @@ func (h *Handler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 				// Update file path to only be the base name
 				fp.Name = filepath.Base(fp.Name)
 
-				log.WithFields(log.Fields{"ident": ident, "file-name": fp.Name, "file-sha": fp.Shasum}).
-					Info("Received file information.")
+				log.Info().Str("agent", ident).Str("file-name", fp.Name).Str("sha", fp.Shasum).Msg("received file info")
 
 				// check shasum
 				h := sha1.New()
 				h.Write(*fp.Data)
 				cSum := hex.EncodeToString(h.Sum(nil))
 
-				if cSum == fp.Shasum {
-					log.WithFields(log.Fields{
-						"ident":          ident,
-						"file-name":      fp.Name,
-						"file-sha":       fp.Shasum,
-						"calculated-sha": cSum,
-					}).Info("Calculated SHAsum matches")
-				} else {
-					log.WithFields(log.Fields{
-						"ident":          ident,
-						"file-name":      fp.Name,
-						"file-sha":       fp.Shasum,
-						"calculated-sha": cSum,
-					}).Warn("Calculated SHAsum does not match!")
+				if cSum != fp.Shasum {
+					log.Warn().Str("agent", ident).Str("file-name", fp.Name).Str("sha", fp.Shasum).Str("sha-real", cSum).
+						Msg("calculated and expected shasum mismatch")
 				}
 
-				log.WithFields(log.Fields{"ident": ident, "file-name": fp.Name}).
-					Info("Writing file to disk.")
+				log.Info().Str("agent", ident).Str("file-name", fp.Name).Msg("writing file to local disk")
 
 				if err := ioutil.WriteFile(fp.Name, *fp.Data, 0644); err != nil {
-					log.WithFields(log.Fields{"ident": ident, "file-name": fp.Name, "err": err}).
-						Info("Failed writing file to disk.")
+					log.Error().Err(err).Str("agent", ident).Str("file-name", fp.Name).Msg("failed writing file to local disk")
 					aRecordResponse = protocol.FailureDNSResponse
 					break
 				}
@@ -173,13 +158,11 @@ func (h *Handler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 				break
 
 			case protocol.CmdProtocol:
-				log.WithFields(log.Fields{"ident": ident}).
-					Info("Attempting to decode the finished CmdProtol stream.")
+				log.Debug().Str("agent", ident).Msg("decoding cmdprotocol stream")
 
 				cp := &protocol.Command{}
-				if err := utils.UngobUnpress(cp, bufferRecord.Data); err != nil {
-					log.WithFields(log.Fields{"ident": ident, "err": err}).
-						Error("UngobUnpress failed.")
+				if err := lib.UngobUnpress(cp, bufferRecord.Data); err != nil {
+					log.Error().Err(err).Str("agent", ident).Msg("failed to ungobpress")
 					aRecordResponse = protocol.FailureDNSResponse
 					break
 				}
@@ -189,8 +172,7 @@ func (h *Handler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 				break
 
 			default:
-				log.WithFields(log.Fields{"ident": ident}).
-					Info("Unknown protocol to decode? DODGE!")
+				log.Warn().Str("agent", ident).Msg("unknown protocol to decode. someone fuzzing us?")
 				aRecordResponse = protocol.FailureDNSResponse
 				break
 			}
@@ -200,8 +182,7 @@ func (h *Handler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 
 		// Handle closing errors
 		if (streamType == protocol.StreamEnd) && !ok {
-			log.WithFields(log.Fields{"ident": ident}).
-				Error("Tried to append to a steam that is not known. Bailing")
+			log.Error().Str("agent", ident).Msg("not appending to stream that has finished")
 			aRecordResponse = protocol.FailureDNSResponse
 			break
 		}
@@ -211,7 +192,7 @@ func (h *Handler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	case dns.TypeTXT:
 		ident, err := h.parseTxtRRLabels(r)
 		if err != nil {
-			fmt.Printf("Failed to parse identifer: %s\n", err)
+			log.Debug().Err(err).Msg("failed to parse identifier")
 			txtRecordResponse = protocol.ErrorTxtResponse
 			break
 		}
@@ -225,7 +206,8 @@ func (h *Handler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 				FirstCheckin: time.Now(),
 				LastCheckin:  time.Now(),
 			}
-			log.WithFields(log.Fields{"ident": ident}).Info("First time checkin for agent")
+			log.Info().Str("agent", ident).Msg("first time checkin for new agent")
+
 			h.Agents[ident] = agentMeta
 		} else {
 			// Update the last checkin time
@@ -239,17 +221,16 @@ func (h *Handler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 			break
 		}
 
-		log.WithFields(log.Fields{"ident": ident, "cmd": cmd.Exec}).
-			Info("Giving agent a new command as checkin response")
+		log.Info().Str("agent", ident).Str("command", cmd.Exec).Msg("queuing command for agent")
 		txtRecordResponse = protocol.CmdTxtResponse
 
 		var ec bytes.Buffer
-		utils.GobPress(cmd.GetOutgoing(), &ec)
+		lib.GobPress(cmd.GetOutgoing(), &ec)
 		additionalTxtKey := fmt.Sprintf("p=%x", ec.Bytes())
 
 		if len(additionalTxtKey) > 230 {
-			log.WithFields(log.Fields{"ident": ident, "encoded-len": len(additionalTxtKey)}).
-				Info("Outgoing command too long for a single TXT record. Try a shorter one for now, sorry...")
+			log.Error().Str("agent", ident).Str("command", cmd.Exec).Int("encoded-len", len(additionalTxtKey)).
+				Msg("command too long for a single txt encoding run. use a shorter one for now, sorry!")
 			delete(h.CommandSpool, ident)
 			txtRecordResponse = protocol.ErrorTxtResponse
 			break
@@ -292,7 +273,7 @@ func (h *Handler) parseARRLabels(r *dns.Msg) (string, byte, int, int, []byte, er
 	hsq := strings.Split(r.Question[0].String(), ".")
 
 	if len(hsq) <= 9 {
-		fmt.Println("Question had less than 9 labels, bailing.")
+		log.Debug().Str("labels", r.Question[0].String()).Msg("question had less than 9 labels")
 		return "", 0x00, 0, 0, []byte{0x00}, errors.New(protocol.FailureDNSResponse)
 	}
 
@@ -304,20 +285,20 @@ func (h *Handler) parseARRLabels(r *dns.Msg) (string, byte, int, int, []byte, er
 
 	streamTypeBytes, err := hex.DecodeString(hsq[1])
 	if err != nil {
-		fmt.Printf("Failed to convert stream type to bytes:\n%s\n", err)
+		log.Error().Err(err).Str("agent", ident).Msg("failed to decode stream type bytes")
 		return "", 0x00, 0, 0, []byte{0x00}, errors.New(protocol.FailureDNSResponse)
 	}
 	streamType := streamTypeBytes[0]
 
 	seq, err := strconv.Atoi(hsq[2])
 	if err != nil {
-		fmt.Printf("Failed to convert sequence to Integer:\n%s\n", err)
+		log.Error().Err(err).Str("agent", ident).Msg("failed to convert seq to int")
 		return "", 0x00, 0, 0, []byte{0x00}, errors.New(protocol.FailureDNSResponse)
 	}
 
 	transferProtocol, err := strconv.Atoi(hsq[4])
 	if err != nil {
-		fmt.Printf("Failed to convert protocol to Integer:\n%s\n", err)
+		log.Error().Err(err).Str("agent", ident).Msg("failed to convert protocol to int")
 		return "", 0x00, 0, 0, []byte{0x00}, errors.New(protocol.FailureDNSResponse)
 	}
 
@@ -325,11 +306,11 @@ func (h *Handler) parseARRLabels(r *dns.Msg) (string, byte, int, int, []byte, er
 	// amount for data itself.
 	dataLen, err := strconv.Atoi(hsq[5])
 	if err != nil {
-		fmt.Printf("Failed to convert data length to Integer:\n%s\n", err)
+		log.Error().Err(err).Str("agent", ident).Msg("failed to convert data length to int")
 		return "", 0x00, 0, 0, []byte{0x00}, errors.New(protocol.FailureDNSResponse)
 	}
 
-	// build up the data variable. We assume of a label was 0
+	// build up the data variable. We assume that if a label was 0
 	// then the data is not interesting.
 	var data string
 	switch dataLen {
@@ -347,19 +328,14 @@ func (h *Handler) parseARRLabels(r *dns.Msg) (string, byte, int, int, []byte, er
 	// decode the data
 	byteData, err := hex.DecodeString(data)
 	if err != nil {
-		fmt.Printf("Could not decode data:\n%s\n", err)
+		log.Error().Err(err).Str("agent", ident).Msg("failed to decode label data")
 		return "", 0x00, 0, 0, []byte{0x00}, errors.New(protocol.FailureDNSResponse)
 	}
 
 	// crc32 check
 	if hsq[3] != fmt.Sprintf("%02x", crc32.ChecksumIEEE(byteData)) {
-		log.WithFields(log.Fields{
-			"expected":    hsq[3],
-			"calculated":  crc32.ChecksumIEEE(byteData),
-			"stream-type": streamType,
-			"ident":       ident,
-			"seq":         seq,
-		}).Warn("Checksum failure")
+		log.Warn().Str("agent", ident).Str("expected-crc", hsq[3]).
+			Uint32("calculated-crc", crc32.ChecksumIEEE(byteData)).Msg("crc32 check failed")
 	}
 
 	return ident, streamType, seq, transferProtocol, byteData, nil
@@ -372,7 +348,7 @@ func (h *Handler) parseTxtRRLabels(r *dns.Msg) (string, error) {
 	hsq := strings.Split(r.Question[0].String(), ".")
 
 	if len(hsq) <= 1 {
-		fmt.Println("TXT Question had less than 1 labels, bailing.")
+		log.Debug().Str("labels", r.Question[0].String()).Msg("question had less than 1 labels")
 		return "", errors.New(protocol.FailureDNSResponse)
 	}
 
@@ -380,7 +356,7 @@ func (h *Handler) parseTxtRRLabels(r *dns.Msg) (string, error) {
 	identData := strings.Split(hsq[0], ";")[1]
 	identBytes, err := hex.DecodeString(identData)
 	if err != nil {
-		fmt.Printf("Failed to decode ident bytes:\n%s\n", err)
+		log.Debug().Err(err).Msg("failed to decode ident bytes")
 		return "", errors.New(protocol.FailureDNSResponse)
 	}
 	ident := string(identBytes)

@@ -10,8 +10,6 @@ import (
 
 	"github.com/miekg/dns"
 	"github.com/spf13/cobra"
-
-	log "github.com/sirupsen/logrus"
 )
 
 var sendCmdFileName string
@@ -29,57 +27,49 @@ Example:
 	godoh --domain example.com send --file blueprints.docx`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		sendLogger := log.WithFields(log.Fields{"module": "send"})
+		log := options.Logger
 
 		if sendCmdFileName == "" {
-			sendLogger.Fatal("Please provide a file name to send!")
+			log.Fatal().Msg("a file to send is required")
 		}
 
 		file, err := os.Open(sendCmdFileName)
 		if err != nil {
-			sendLogger.Fatal(err)
+			log.Fatal().Err(err).Msg("failed to open file")
 		}
 		defer file.Close()
 
 		fileInfo, err := file.Stat()
 		if err != nil {
-			sendLogger.Fatal(err)
+			log.Fatal().Err(err).Msg("failed get file information")
 		}
 
 		fileSize := fileInfo.Size()
-		log.WithFields(log.Fields{"file": sendCmdFileName, "size": fileSize}).
-			Info("File name and size")
+		log.Info().Str("filename", sendCmdFileName).Int64("size", fileSize).Msg("file info")
 
 		fileBuffer, err := ioutil.ReadAll(file)
 		if err != nil {
-			sendLogger.Fatal(err)
+			log.Fatal().Err(err).Msg("failed to read file")
 		}
 
 		message := protocol.File{}
 		message.Prepare(&fileBuffer, fileInfo)
 		requests, successFlag := message.GetRequests()
 
-		log.WithFields(log.Fields{"file": sendCmdFileName, "size": fileSize, "requests": len(requests)}).
-			Info("Making DNS requests to transfer file")
+		log.Debug().Int("requests", len(requests)).Msg("request count to transfer file")
 
 		for _, r := range requests {
-			response := dnsclient.Lookup(dnsProvider, fmt.Sprintf(dnsDomain, r), dns.TypeA)
+			response := dnsclient.Lookup(options.Provider, fmt.Sprintf(options.Domain, r), dns.TypeA)
 
 			if response.Data == successFlag {
-				log.WithFields(log.Fields{
-					"file":     sendCmdFileName,
-					"size":     fileSize,
-					"requests": len(requests),
-					"response": response.Data,
-				}).Info("Server successfully acked")
-
+				log.Debug().Str("response", response.Data).Str("labels", r).Msg("request success")
 			} else {
-				fmt.Println("Server did not respond with a successful ack. Exiting.")
+				log.Error().Str("response", response.Data).Str("labels", r).Msg("request failed. exiting")
 				return
 			}
 		}
 
-		fmt.Println("Done! The file should be on the other side! :D")
+		log.Info().Msg("done! the file should be on the other side")
 	},
 }
 

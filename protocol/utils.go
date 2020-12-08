@@ -6,7 +6,7 @@ import (
 	"hash/crc32"
 	"log"
 
-	"github.com/sensepost/godoh/utils"
+	"github.com/sensepost/godoh/lib"
 )
 
 // Requestify generates hostnames for DNS lookups
@@ -58,8 +58,8 @@ func Requestify(data []byte, protocol int) []string {
 		ident, StreamStart, seq-1, crc32.ChecksumIEEE(emptyBytes), protocol, 0, 0x00, 0x00, 0x00)
 	requests = append(requests, initRequest)
 
-	for _, s := range utils.ByteSplit(data, 90) {
-		labelSplit := utils.ByteSplit(s, 30)
+	for _, s := range lib.ByteSplit(data, 90) {
+		labelSplit := lib.ByteSplit(s, 30)
 
 		// Having the data split into 3 labels, prepare the data label
 		// that will be used in the request.

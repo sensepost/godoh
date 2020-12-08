@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"time"
 
-	"github.com/sensepost/godoh/utils"
+	"github.com/sensepost/godoh/lib"
 )
 
 // Command represents a command to be send over DNS.
@@ -19,7 +19,7 @@ type Command struct {
 func (c *Command) Prepare(cmd string) {
 
 	c.Exec = cmd
-	c.Identifier = utils.RandomString(5)
+	c.Identifier = lib.RandomString(5)
 }
 
 // GetOutgoing returns the hostnames to lookup as part of a file
@@ -34,7 +34,7 @@ func (c *Command) GetOutgoing() string {
 func (c *Command) GetRequests() ([]string, string) {
 
 	var b bytes.Buffer
-	utils.GobPress(c, &b)
+	lib.GobPress(c, &b)
 
 	requests := Requestify(b.Bytes(), CmdProtocol)
 

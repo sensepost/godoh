@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"os"
 
-	"github.com/sensepost/godoh/utils"
+	"github.com/sensepost/godoh/lib"
 )
 
 // File represents a file to be send over DNS.
@@ -29,7 +29,7 @@ func (fc *File) Prepare(data *[]byte, fileInfo os.FileInfo) {
 	fc.Shasum = hex.EncodeToString(h.Sum(nil))
 	fc.Name = fileInfo.Name()
 	fc.Data = data
-	fc.Identifier = utils.RandomString(5)
+	fc.Identifier = lib.RandomString(5)
 }
 
 // GetRequests returns the hostnames to lookup as part of a file
@@ -37,7 +37,7 @@ func (fc *File) Prepare(data *[]byte, fileInfo os.FileInfo) {
 func (fc *File) GetRequests() ([]string, string) {
 
 	var b bytes.Buffer
-	utils.GobPress(fc, &b)
+	lib.GobPress(fc, &b)
 
 	requests := Requestify(b.Bytes(), FileProtocol)
 
