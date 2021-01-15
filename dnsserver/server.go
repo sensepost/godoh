@@ -236,7 +236,7 @@ func (h *Handler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 			break
 		}
 
-		txtRecordResponse = append(txtRecordResponse, fmt.Sprintf("p=%x", ec.Bytes()))
+		txtRecordResponse = fmt.Sprintf("%s,%s", txtRecordResponse, fmt.Sprintf("p=%x", ec.Bytes()))
 
 		// Remove the command
 		delete(h.CommandSpool, ident)
@@ -259,7 +259,7 @@ func (h *Handler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	case dns.TypeTXT:
 		msg.Answer = append(msg.Answer, &dns.TXT{
 			Hdr: dns.RR_Header{Name: domain, Rrtype: dns.TypeTXT, Class: dns.ClassINET, Ttl: 1},
-			Txt: txtRecordResponse,
+			Txt: []string{txtRecordResponse},
 		})
 	}
 

@@ -12,15 +12,9 @@ const (
 
 // TXT record default responses
 var (
-	NoCmdTxtResponse = []string{
-		"v=B2B3FE1C",
-	}
-	ErrorTxtResponse = []string{
-		"v=D31CFAA4",
-	}
-	CmdTxtResponse = []string{
-		"v=A9F466E8",
-	}
+	NoCmdTxtResponse = "v=B2B3FE1C"
+	ErrorTxtResponse = "v=D31CFAA4"
+	CmdTxtResponse   = "v=A9F466E8"
 )
 
 // MaxLabelSize is the maximum size a DNS hostname label may be.

