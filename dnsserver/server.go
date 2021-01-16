@@ -251,12 +251,14 @@ func (h *Handler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	// Now, depending on the question we got, build a response packet
 	switch r.Question[0].Qtype {
 	case dns.TypeA:
+		log.Debug().Str("response", aRecordResponse).Msg("A response content")
 		msg.Answer = append(msg.Answer, &dns.A{
 			Hdr: dns.RR_Header{Name: domain, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60},
 			A:   net.ParseIP(aRecordResponse),
 		})
 		break
 	case dns.TypeTXT:
+		log.Debug().Str("response", txtRecordResponse).Msg("TXT response content")
 		msg.Answer = append(msg.Answer, &dns.TXT{
 			Hdr: dns.RR_Header{Name: domain, Rrtype: dns.TypeTXT, Class: dns.ClassINET, Ttl: 1},
 			Txt: []string{txtRecordResponse},

@@ -2,7 +2,8 @@ package lib
 
 import (
 	"bytes"
-	"compress/gzip"
+	"compress/flate"
+	"compress/zlib"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -28,14 +29,14 @@ func GobPress(s interface{}, data io.Writer) error {
 		return err
 	}
 
-	return GzipWrite(data, enc)
+	return ZlibWrite(data, enc)
 }
 
 // UngobUnpress will gob decode and decompress a struct
 func UngobUnpress(s interface{}, data []byte) error {
 
 	dcData := bytes.Buffer{}
-	if err := GunzipWrite(&dcData, data); err != nil {
+	if err := UnzlibWrite(&dcData, data); err != nil {
 		return err
 	}
 
@@ -52,26 +53,23 @@ func UngobUnpress(s interface{}, data []byte) error {
 	return nil
 }
 
-// GzipWrite data to a Writer
-func GzipWrite(w io.Writer, data []byte) error {
-	// Write gzipped data to the client
-	gw, err := gzip.NewWriterLevel(w, gzip.BestCompression)
-	defer gw.Close()
-	gw.Write(data)
+// ZlibWrite data to a Writer
+func ZlibWrite(w io.Writer, data []byte) error {
+	wr, err := zlib.NewWriterLevel(w, flate.BestCompression)
+	defer wr.Close()
+	wr.Write(data)
 
 	return err
 }
 
-// GunzipWrite data to a Writer
-func GunzipWrite(w io.Writer, data []byte) error {
-	// Write gzipped data to the client
-	gr, err := gzip.NewReader(bytes.NewBuffer(data))
+// UnzlibWrite data to a Writer
+func UnzlibWrite(w io.Writer, data []byte) error {
+	zr, err := zlib.NewReader(bytes.NewBuffer(data))
 	if err != nil {
 		return err
 	}
-	defer gr.Close()
 
-	data, err = ioutil.ReadAll(gr)
+	data, err = ioutil.ReadAll(zr)
 	if err != nil {
 		return err
 	}
