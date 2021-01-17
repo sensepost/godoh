@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	mrand "math/rand"
@@ -117,6 +118,11 @@ func Encrypt(plaintext []byte) ([]byte, error) {
 		panic(err)
 	}
 
+	plaintext, err = pkcs7pad(plaintext, aes.BlockSize) // BlockSize = 16
+	if err != nil {
+		return nil, err
+	}
+
 	// The IV needs to be unique, but not secure. Therefore it's common to
 	// include it at the beginning of the ciphertext.
 	ciphertext := make([]byte, aes.BlockSize+len(plaintext))
@@ -125,8 +131,8 @@ func Encrypt(plaintext []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	stream := cipher.NewCFBEncrypter(block, iv)
-	stream.XORKeyStream(ciphertext[aes.BlockSize:], plaintext)
+	stream := cipher.NewCBCEncrypter(block, iv)
+	stream.CryptBlocks(ciphertext[aes.BlockSize:], plaintext)
 
 	return ciphertext, nil
 }
@@ -150,10 +156,50 @@ func Decrypt(ciphertext []byte) ([]byte, error) {
 	iv := ciphertext[:aes.BlockSize]
 	ciphertext = ciphertext[aes.BlockSize:]
 
-	stream := cipher.NewCFBDecrypter(block, iv)
+	stream := cipher.NewCBCDecrypter(block, iv)
+	stream.CryptBlocks(ciphertext, ciphertext)
 
-	// XORKeyStream can work in-place if the two arguments are the same.
-	stream.XORKeyStream(ciphertext, ciphertext)
+	ciphertext, err = pkcs7strip(ciphertext, aes.BlockSize)
+	if err != nil {
+		return nil, err
+	}
 
 	return ciphertext, nil
+}
+
+// pkcs7strip remove pkcs7 padding
+// https://gist.github.com/nanmu42/b838acc10d393bc51cb861128ce7f89c
+func pkcs7strip(data []byte, blockSize int) ([]byte, error) {
+	length := len(data)
+
+	if length == 0 {
+		return nil, errors.New("pkcs7: Data is empty")
+	}
+
+	if length%blockSize != 0 {
+		return nil, errors.New("pkcs7: Data is not block-aligned")
+	}
+
+	padLen := int(data[length-1])
+	ref := bytes.Repeat([]byte{byte(padLen)}, padLen)
+
+	if padLen > blockSize || padLen == 0 || !bytes.HasSuffix(data, ref) {
+		return nil, errors.New("pkcs7: Invalid padding")
+	}
+
+	return data[:length-padLen], nil
+}
+
+// pkcs7pad add pkcs7 padding
+// https://gist.github.com/nanmu42/b838acc10d393bc51cb861128ce7f89c
+func pkcs7pad(data []byte, blockSize int) ([]byte, error) {
+
+	if blockSize < 0 || blockSize > 256 {
+		return nil, fmt.Errorf("pkcs7: Invalid block size %d", blockSize)
+	}
+
+	padLen := blockSize - len(data)%blockSize
+	padding := bytes.Repeat([]byte{byte(padLen)}, padLen)
+
+	return append(data, padding...), nil
 }
