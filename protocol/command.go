@@ -2,17 +2,16 @@ package protocol
 
 import (
 	"bytes"
-	"time"
 
 	"github.com/sensepost/godoh/lib"
 )
 
 // Command represents a command to be send over DNS.
 type Command struct {
-	Exec       string    `json:"exec"`
-	Data       []byte    `json:"data"`
-	ExecTime   time.Time `json:"exectime"`
-	Identifier string    `json:"identifier"`
+	Exec       string `json:"exec"`
+	Data       []byte `json:"data"`
+	ExecTime   int64  `json:"exectime"`
+	Identifier string `json:"identifier"`
 }
 
 // Prepare configures the File struct with relevant data.

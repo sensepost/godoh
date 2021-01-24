@@ -2,8 +2,6 @@ package lib
 
 import (
 	"bytes"
-	"compress/flate"
-	"compress/zlib"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -12,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	mrand "math/rand"
 )
 
@@ -30,19 +27,16 @@ func GobPress(s interface{}, data io.Writer) error {
 		return err
 	}
 
-	return ZlibWrite(data, enc)
+	data.Write(enc)
+
+	return nil
 }
 
 // UngobUnpress will gob decode and decompress a struct
 func UngobUnpress(s interface{}, data []byte) error {
 
-	dcData := bytes.Buffer{}
-	if err := UnzlibWrite(&dcData, data); err != nil {
-		return err
-	}
-
 	// Decrypt the data
-	decryptData, err := Decrypt(dcData.Bytes())
+	decryptData, err := Decrypt(data)
 	if err != nil {
 		return err
 	}
@@ -50,31 +44,6 @@ func UngobUnpress(s interface{}, data []byte) error {
 	if err := json.Unmarshal(decryptData, &s); err != nil {
 		return err
 	}
-
-	return nil
-}
-
-// ZlibWrite data to a Writer
-func ZlibWrite(w io.Writer, data []byte) error {
-	wr, err := zlib.NewWriterLevel(w, flate.BestCompression)
-	defer wr.Close()
-	wr.Write(data)
-
-	return err
-}
-
-// UnzlibWrite data to a Writer
-func UnzlibWrite(w io.Writer, data []byte) error {
-	zr, err := zlib.NewReader(bytes.NewBuffer(data))
-	if err != nil {
-		return err
-	}
-
-	data, err = ioutil.ReadAll(zr)
-	if err != nil {
-		return err
-	}
-	w.Write(data)
 
 	return nil
 }

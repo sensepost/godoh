@@ -126,7 +126,7 @@ func executeCommand(cmdBin string, cmdArgs []string) {
 	// Send the response back to the server!
 	commandOutput := protocol.Command{}
 	commandOutput.Data = out
-	commandOutput.ExecTime = time.Now()
+	commandOutput.ExecTime = time.Now().UTC().UnixNano()
 
 	commandOutput.Prepare(cmdBin + strings.Join(cmdArgs, " "))
 	requests, successFlag := commandOutput.GetRequests()
