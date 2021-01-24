@@ -155,7 +155,7 @@ func Decrypt(ciphertext []byte) ([]byte, error) {
 
 	// Ensure we have the correct blocksize
 	if (len(ciphertext) % aes.BlockSize) != 0 {
-		return nil, errors.New("Cipher text is not the currect length")
+		return nil, errors.New("Cipher text is not the expected length")
 	}
 
 	iv := ciphertext[:aes.BlockSize]
