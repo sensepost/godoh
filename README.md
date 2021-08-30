@@ -14,6 +14,14 @@
 </p>
 <br>
 
+## The following updates have been implemented from the latest current version of [godoh](https://github.com/sensepost/godoh)
+
+* Added support for HTTP basic authentication proxy
+* Added support for specifying a custom "AES key" from command line (used to encrypt data blobs in communications)
+* Added support for specifying a custom "User-Agent" (default: Edge 44 on Windows 10) from command line
+* Added Blokada & NextDNS providers support
+* Fix issues with Quad9 provider
+
 ## introduction
 
 `godoh` is a proof of concept Command and Control framework, written in Golang, that uses DNS-over-HTTPS as a transport medium. Currently supported providers include Google, Cloudflare but also contains the ability to use traditional DNS.
