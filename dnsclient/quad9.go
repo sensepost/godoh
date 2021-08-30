@@ -13,7 +13,8 @@ import (
 
 // Quad9DNS is a Client instance resolving using Quad9's DNS-over-HTTPS service
 type Quad9DNS struct {
-	BaseURL string
+	BaseURL   string
+	UserAgent string
 }
 
 // Lookup performs a DNS lookup using Quad9
@@ -27,6 +28,8 @@ func (c *Quad9DNS) Lookup(name string, rType uint16) Response {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	req.Header.Set("User-Agent", c.UserAgent)
 
 	q := req.URL.Query()
 	q.Add("name", name)

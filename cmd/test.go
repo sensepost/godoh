@@ -44,11 +44,11 @@ For example:
 			break
 		}
 
-		c := dnsclient.NewGoogleDNS()
+		c := dnsclient.NewGoogleDNS("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102")
 		values := dnsclient.Lookup(c, testCmdName, dnsType)
 		fmt.Printf("Status: %s, Result: %s, TTL: %d\n", values.Status, values.Data, values.TTL)
 
-		d := dnsclient.NewCloudFlareDNS()
+		d := dnsclient.NewCloudFlareDNS("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102")
 		values = dnsclient.Lookup(d, testCmdName, dnsType)
 		fmt.Printf("Status: %s, Result: %s, TTL: %d\n", values.Status, values.Data, values.TTL)
 

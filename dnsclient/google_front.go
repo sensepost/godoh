@@ -14,7 +14,8 @@ import (
 // GoogleFrontDNS is a Client instance resolving using Googles DNS-over-HTTPS service,
 // fronted using www.google.com
 type GoogleFrontDNS struct {
-	BaseURL string
+	BaseURL   string
+	UserAgent string
 }
 
 // Lookup performs a DNS lookup using Google
@@ -32,6 +33,7 @@ func (c *GoogleFrontDNS) Lookup(name string, rType uint16) Response {
 	// Update the Host client header to dns.google.com
 	// Ref: https://twitter.com/vysecurity/status/1058947074392125440
 	req.Host = "dns.google.com"
+	req.Header.Set("User-Agent", c.UserAgent)
 
 	q := req.URL.Query()
 	q.Add("name", name)
