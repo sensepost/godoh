@@ -13,7 +13,8 @@ import (
 
 // GoogleDNS is a Client instance resolving using Googles DNS-over-HTTPS service
 type GoogleDNS struct {
-	BaseURL string
+	BaseURL   string
+	UserAgent string
 }
 
 // Lookup performs a DNS lookup using Google
@@ -27,6 +28,8 @@ func (c *GoogleDNS) Lookup(name string, rType uint16) Response {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	req.Header.Set("User-Agent", c.UserAgent)
 
 	q := req.URL.Query()
 	q.Add("name", name)

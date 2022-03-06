@@ -11,14 +11,14 @@ import (
 	"github.com/miekg/dns"
 )
 
-// CloudflareDNS is a Client instance resolving using Cloudflares DNS-over-HTTPS service
-type CloudflareDNS struct {
+// NextDNS is a Client instance resolving using NextDNS DNS-over-HTTPS service
+type NextDNS struct {
 	BaseURL   string
 	UserAgent string
 }
 
-// Lookup performs a DNS lookup using Cloudflare
-func (c *CloudflareDNS) Lookup(name string, rType uint16) Response {
+// Lookup performs a DNS lookup using NextDNS
+func (c *NextDNS) Lookup(name string, rType uint16) Response {
 
 	client := http.Client{
 		Timeout: time.Second * 20,
@@ -50,7 +50,7 @@ func (c *CloudflareDNS) Lookup(name string, rType uint16) Response {
 		log.Fatal(err)
 	}
 
-	// fmt.Printf("CLOUDFLARE DNS RESPONSE BODY:\n%s\n", body)
+	// fmt.Printf("NextDNS DNS RESPONSE BODY:\n%s\n", body)
 
 	dnsRequestResponse := requestResponse{}
 	err = json.Unmarshal(body, &dnsRequestResponse)

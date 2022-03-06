@@ -60,7 +60,6 @@ func Requestify(data []byte, protocol int) []string {
 
 	for _, s := range lib.ByteSplit(data, 90) {
 		labelSplit := lib.ByteSplit(s, 30)
-
 		// Having the data split into 3 labels, prepare the data label
 		// that will be used in the request.
 		var dataLabel string

@@ -24,7 +24,7 @@ keywarn:
 	@echo "!!! Not doing this will leave your C2 using the default key!\n"
 
 key:
-	sed -i -E "s/const.*/const cryptKey = \`$(K)\`/g" lib/key.go
+	sed -i -E "s/var.*/var cryptKey = \`$(K)\`/g" lib/key.go
 
 install:
 	go install

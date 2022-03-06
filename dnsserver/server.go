@@ -74,7 +74,6 @@ func (h *Handler) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 			// Add this new stream identifier
 			h.StreamSpool[ident] = *DNSBuf
 			log.Info().Str("agent", ident).Msg("new incoming dns stream")
-
 			break
 		}
 
@@ -276,6 +275,13 @@ func (h *Handler) parseARRLabels(r *dns.Msg) (string, byte, int, int, []byte, er
 
 	if len(hsq) <= 9 {
 		log.Debug().Str("labels", r.Question[0].String()).Msg("question had less than 9 labels")
+		return "", 0x00, 0, 0, []byte{0x00}, errors.New(protocol.FailureDNSResponse)
+	}
+
+	// If the first label or second label is not a valid value
+	// then the data is not interesting (Quad9 case - multiple DNS queries sent by the provider).
+	if len(hsq[0]) < 4 || (len(hsq[1]) == 0 || len(hsq[1]) < 2) {
+		log.Debug().Str("labels", r.Question[0].String()).Msg("question data is not interesting")
 		return "", 0x00, 0, 0, []byte{0x00}, errors.New(protocol.FailureDNSResponse)
 	}
 

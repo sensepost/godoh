@@ -24,6 +24,12 @@ type Options struct {
 
 	// TLS config
 	ValidateTLS bool
+
+	// AES Key
+	AESKey string
+
+	// 	User-Agent
+	UserAgent string
 }
 
 // NewOptions returns a new options struct
@@ -69,16 +75,22 @@ func (o *Options) GetDNSClient() (dnsclient.Client, error) {
 	case "googlefront":
 		log.Warn().Msg(`WARNING: Domain fronting dns.google.com via www.google.com no longer works. ` +
 			`A redirect to dns.google.com will be returned. See: https://twitter.com/leonjza/status/1187002742553923584`)
-		o.Provider = dnsclient.NewGoogleFrontDNS()
+		o.Provider = dnsclient.NewGoogleFrontDNS(o.UserAgent)
 		break
 	case "google":
-		o.Provider = dnsclient.NewGoogleDNS()
+		o.Provider = dnsclient.NewGoogleDNS(o.UserAgent)
 		break
 	case "cloudflare":
-		o.Provider = dnsclient.NewCloudFlareDNS()
+		o.Provider = dnsclient.NewCloudFlareDNS(o.UserAgent)
 		break
 	case "quad9":
-		o.Provider = dnsclient.NewQuad9DNS()
+		o.Provider = dnsclient.NewQuad9DNS(o.UserAgent)
+		break
+	case "blokada":
+		o.Provider = dnsclient.NewBlokadaDNS(o.UserAgent)
+		break
+	case "nextdns":
+		o.Provider = dnsclient.NewNextDNS(o.UserAgent)
 		break
 	case "raw":
 		o.Provider = dnsclient.NewRawDNS()

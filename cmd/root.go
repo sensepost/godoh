@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"math/rand"
+
 	"os"
 	"time"
 
@@ -21,7 +22,7 @@ var (
 	// CompileTimeDomain is the domain set with `make dnsDomain=foo.com`
 	CompileTimeDomain string
 
-	// options are CLI options
+	// Options are CLI options
 	options = lib.NewOptions()
 )
 
@@ -40,11 +41,10 @@ var rootCmd = &cobra.Command{
 		options.SetTLSValidation()
 
 		// Setup the logger to use
-		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "02 Jan 2006 15:04:05"})
 		if options.Debug {
 			log.Logger = log.Logger.Level(zerolog.DebugLevel)
 			log.Logger = log.With().Caller().Logger()
-			log.Debug().Msg("debug logging enabed")
+			log.Debug().Msg("debug logging enabled")
 		} else {
 			log.Logger = log.Logger.Level(zerolog.InfoLevel)
 		}
@@ -54,6 +54,12 @@ var rootCmd = &cobra.Command{
 
 		options.Logger = &log.Logger
 
+		// configure AES key
+		if options.AESKey != "" {
+			log.Debug().Str("key", options.AESKey).Msg("using AES key")
+			lib.SetAESKey(options.AESKey)
+		}
+
 		// if we have a compile time domain, use that if one is not set via CLI
 		if (options.Domain == "") && (CompileTimeDomain != "") {
 			log.Debug().Str("domain", CompileTimeDomain).Msg("using compile time domain")
@@ -61,10 +67,8 @@ var rootCmd = &cobra.Command{
 		} else {
 			log.Debug().Str("domain", options.Domain).Msg("using flag domain")
 		}
-
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-
 		// by default, start in agent mode
 		if len(args) == 0 {
 			agentCmd.Run(cmd, args)
@@ -84,6 +88,7 @@ func Execute() {
 func init() {
 
 	// logging
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "02 Jan 2006 15:04:05"})
 	rootCmd.PersistentFlags().BoolVar(&options.Debug, "debug", false, "enable debug logging")
 	rootCmd.PersistentFlags().BoolVar(&options.DisableLogging, "disable-logging", false, "disable all logging")
 
@@ -92,6 +97,8 @@ func init() {
 		rootCmd.PersistentFlags().StringVarP(&options.Domain, "domain", "d", "", "DNS Domain to use. (ie: example.com)")
 	}
 
-	rootCmd.PersistentFlags().StringVarP(&options.ProviderName, "provider", "p", "google", "Preferred DNS provider to use. [possible: googlefront, google, cloudflare, quad9, raw]")
+	rootCmd.PersistentFlags().StringVarP(&options.ProviderName, "provider", "p", "google", "Preferred DNS provider to use. [possible: googlefront, google, cloudflare, quad9, blokada, nextdns, raw]")
 	rootCmd.PersistentFlags().BoolVarP(&options.ValidateTLS, "validate-certificate", "K", false, "Validate DoH provider SSL certificates")
+	rootCmd.PersistentFlags().StringVarP(&options.AESKey, "aeskey", "k", "", "AES key used to encrypt data blobs in communications (ie: openssl rand -hex 16)")
+	rootCmd.PersistentFlags().StringVarP(&options.UserAgent, "user-agent", "a", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.18362", "Setting a custom User-Agent (default: Edge 44 on Windows 10)")
 }
