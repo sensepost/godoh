@@ -11,11 +11,12 @@ import (
 
 // File represents a file to be send over DNS.
 type File struct {
-	Size       int64   `json:"size"`
-	Shasum     string  `json:"shasum"`
-	Name       string  `json:"name"`
-	Data       *[]byte `json:"data"`
-	Identifier string  `json:"identifier"`
+	Size        int64   `json:"size"`
+	Shasum      string  `json:"shasum"`
+	Name        string  `json:"name"`
+	Destination string  `json:"destination"`
+	Data        *[]byte `json:"data"`
+	Identifier  string  `json:"identifier"`
 }
 
 // Prepare configures the File struct with relevant data.
@@ -32,14 +33,25 @@ func (fc *File) Prepare(data *[]byte, fileInfo os.FileInfo) {
 	fc.Identifier = lib.RandomString(5)
 }
 
-// GetRequests returns the hostnames to lookup as part of a file
-// transfer operation.
-func (fc *File) GetRequests() ([]string, string) {
+// GetARequests returns the hostnames to lookup as part of a file
+// transfer operation via A records.
+func (fc *File) GetARequests() ([]string, string) {
 
 	var b bytes.Buffer
 	lib.GobPress(fc, &b)
 
-	requests := Requestify(b.Bytes(), FileProtocol)
+	requests := ARequestify(b.Bytes(), FileProtocol)
 
 	return requests, SuccessDNSResponse
+}
+
+// GetTXTRequests returns the TXT record contents to return as
+// part of a file transfer operation via TXT records
+func (fc *File) GetTXTRequests() []string {
+	var b bytes.Buffer
+	lib.GobPress(fc, &b)
+
+	requests := TXTRequestify(b.Bytes(), FileProtocol)
+
+	return requests
 }

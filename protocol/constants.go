@@ -12,9 +12,10 @@ const (
 
 // TXT record default responses
 var (
-	NoCmdTxtResponse = "v=B2B3FE1C"
-	ErrorTxtResponse = "v=D31CFAA4"
-	CmdTxtResponse   = "v=A9F466E8"
+	NoCmdTxtResponse  = "v=B2B3FE1C"
+	ErrorTxtResponse  = "v=D31CFAA4"
+	CmdTxtResponse    = "v=A9F466E8"
+	UploadTxtResponse = "v=H34FERKL"
 )
 
 // MaxLabelSize is the maximum size a DNS hostname label may be.
@@ -24,6 +25,15 @@ const MaxLabelSize = 63
 const (
 	FileProtocol = iota
 	CmdProtocol
+	UploadProtocol
+	CobaltStrikeProtocol
+)
+
+// PollTypes to expect from agents.
+const (
+	PollTypeUndefined = iota
+	PollTypeCheckin
+	PollTypeUpload
 )
 
 // Request stream status
@@ -33,8 +43,8 @@ const (
 	StreamEnd   = 0xca
 )
 
-// DNSBuffer represents a pending DNS conversation
-type DNSBuffer struct {
+// IncomingDNSBuffer represents a pending incoming DNS conversation
+type IncomingDNSBuffer struct {
 	Identifier string
 	Data       []byte
 	Seq        int

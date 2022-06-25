@@ -26,7 +26,7 @@ Example:
 
 		srv := &dns.Server{Addr: ":" + strconv.Itoa(53), Net: "udp"}
 		srv.Handler = &dnsserver.Handler{
-			StreamSpool: make(map[string]protocol.DNSBuffer),
+			IncomingStreamSpool: make(map[string]protocol.IncomingDNSBuffer),
 		}
 		log.Info().Msg("starting dns server")
 		if err := srv.ListenAndServe(); err != nil {

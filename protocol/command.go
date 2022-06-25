@@ -24,7 +24,6 @@ func (c *Command) Prepare(cmd string) {
 // GetOutgoing returns the hostnames to lookup as part of a file
 // transfer operation.
 func (c *Command) GetOutgoing() string {
-
 	return c.Exec
 }
 
@@ -35,7 +34,7 @@ func (c *Command) GetRequests() ([]string, string) {
 	var b bytes.Buffer
 	lib.GobPress(c, &b)
 
-	requests := Requestify(b.Bytes(), CmdProtocol)
+	requests := ARequestify(b.Bytes(), CmdProtocol)
 
 	return requests, SuccessDNSResponse
 }

